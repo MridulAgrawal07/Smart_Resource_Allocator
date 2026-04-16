@@ -1,0 +1,102 @@
+- generic [ref=e3]:
+  - navigation "Portal navigation" [ref=e4]:
+    - generic [ref=e5]:
+      - link "Dashboard Coordinator" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - generic [ref=e12]: Dashboard
+        - generic [ref=e13]: Coordinator
+      - link "Field Report Capture" [ref=e14] [cursor=pointer]:
+        - /url: /report
+        - img [ref=e15]
+        - generic [ref=e21]: Field Report
+        - generic [ref=e22]: Capture
+      - link "Volunteer Missions" [ref=e23] [cursor=pointer]:
+        - /url: /volunteer
+        - img [ref=e24]
+        - generic [ref=e28]: Volunteer
+        - generic [ref=e29]: Missions
+  - generic [ref=e30]:
+    - banner [ref=e31]:
+      - generic [ref=e32]:
+        - img [ref=e34]
+        - generic [ref=e37]:
+          - generic [ref=e38]: SRA Coordinator
+          - generic [ref=e39]: Smart Resource Allocation
+      - search [ref=e41]:
+        - img [ref=e42]
+        - textbox "AI search" [ref=e45]:
+          - /placeholder: "Ask AI: Show me high priority safety issues…"
+        - generic [ref=e47]: ↵
+        - button "Ask AI" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - text: Ask AI
+      - generic [ref=e51]:
+        - generic [ref=e52]: Live
+        - generic "Local time" [ref=e54]:
+          - img [ref=e55]
+          - text: 11:40
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - img [ref=e62]
+            - generic [ref=e64]:
+              - heading "Field Overview" [level=2] [ref=e65]
+              - generic [ref=e66]: 0 pinned incidents
+          - list [ref=e67]:
+            - listitem [ref=e68]: Critical
+            - listitem [ref=e70]: Elevated
+            - listitem [ref=e72]: Routine
+        - generic [ref=e75]:
+          - generic:
+            - generic [ref=e76]:
+              - button "Zoom in" [ref=e77] [cursor=pointer]: +
+              - button "Zoom out" [ref=e78] [cursor=pointer]: −
+            - generic [ref=e79]:
+              - link "Leaflet" [ref=e80] [cursor=pointer]:
+                - /url: https://leafletjs.com
+                - img [ref=e81]
+                - text: Leaflet
+              - text: "| ©"
+              - link "OpenStreetMap" [ref=e85] [cursor=pointer]:
+                - /url: https://www.openstreetmap.org/copyright
+              - text: ©
+              - link "CARTO" [ref=e86] [cursor=pointer]:
+                - /url: https://carto.com/attributions
+      - complementary [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - img [ref=e91]
+            - generic [ref=e97]:
+              - heading "Live Feed" [level=2] [ref=e98]
+              - generic [ref=e99]: Sorted by urgency
+          - generic [ref=e100]: 0 active
+        - generic [ref=e102]:
+          - img [ref=e104]
+          - text: No incidents match the current view.
+      - generic:
+        - generic:
+          - generic: Loading operational data…
+    - contentinfo [ref=e107]:
+      - generic [ref=e108]:
+        - generic [ref=e109]: In view
+        - generic [ref=e111]:
+          - text: "0"
+          - generic [ref=e112]: / 0 total
+      - generic [ref=e113]:
+        - generic [ref=e114]: Critical
+        - generic [ref=e116]: "0"
+      - generic [ref=e117]:
+        - generic [ref=e118]: Elevated
+        - generic [ref=e120]: "0"
+      - generic [ref=e121]:
+        - generic [ref=e122]: Routine
+        - generic [ref=e124]: "0"
+      - generic [ref=e125]:
+        - generic [ref=e126]: People affected
+        - generic [ref=e128]: "0"
+      - generic [ref=e129]:
+        - generic [ref=e130]: Source reports
+        - generic [ref=e132]: "0"
+      - generic [ref=e134]: Top categories

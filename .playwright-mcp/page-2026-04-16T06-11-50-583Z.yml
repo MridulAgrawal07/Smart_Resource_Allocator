@@ -1,0 +1,132 @@
+- generic [ref=e3]:
+  - navigation "Portal navigation" [ref=e4]:
+    - generic [ref=e5]:
+      - link "Dashboard Coordinator" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - generic [ref=e12]: Dashboard
+        - generic [ref=e13]: Coordinator
+      - link "Field Report Capture" [ref=e14] [cursor=pointer]:
+        - /url: /report
+        - img [ref=e15]
+        - generic [ref=e21]: Field Report
+        - generic [ref=e22]: Capture
+      - link "Volunteer Missions" [ref=e23] [cursor=pointer]:
+        - /url: /volunteer
+        - img [ref=e24]
+        - generic [ref=e28]: Volunteer
+        - generic [ref=e29]: Missions
+  - generic [ref=e30]:
+    - banner [ref=e31]:
+      - generic [ref=e32]:
+        - img [ref=e34]
+        - generic [ref=e37]:
+          - generic [ref=e38]: SRA Coordinator
+          - generic [ref=e39]: Smart Resource Allocation
+      - search [ref=e41]:
+        - img [ref=e42]
+        - textbox "AI search" [ref=e45]:
+          - /placeholder: "Ask AI: Show me high priority safety issues…"
+        - generic [ref=e47]: ↵
+        - button "Ask AI" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - text: Ask AI
+      - generic [ref=e51]:
+        - generic [ref=e52]: Live
+        - generic "Local time" [ref=e54]:
+          - img [ref=e55]
+          - text: 11:41
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - img [ref=e62]
+            - generic [ref=e64]:
+              - heading "Field Overview" [level=2] [ref=e65]
+              - generic [ref=e66]: 2 pinned incidents
+          - list [ref=e67]:
+            - listitem [ref=e68]: Critical
+            - listitem [ref=e70]: Elevated
+            - listitem [ref=e72]: Routine
+        - generic [ref=e75]:
+          - generic:
+            - generic [ref=e76]:
+              - button "Zoom in" [ref=e77] [cursor=pointer]: +
+              - button "Zoom out" [ref=e78] [cursor=pointer]: −
+            - generic [ref=e79]:
+              - link "Leaflet" [ref=e80] [cursor=pointer]:
+                - /url: https://leafletjs.com
+                - img [ref=e81]
+                - text: Leaflet
+              - text: "| ©"
+              - link "OpenStreetMap" [ref=e85] [cursor=pointer]:
+                - /url: https://www.openstreetmap.org/copyright
+              - text: ©
+              - link "CARTO" [ref=e86] [cursor=pointer]:
+                - /url: https://carto.com/attributions
+      - complementary [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - img [ref=e91]
+            - generic [ref=e97]:
+              - heading "Live Feed" [level=2] [ref=e98]
+              - generic [ref=e99]: Sorted by urgency
+          - generic [ref=e100]: 2 active
+        - generic [ref=e101]:
+          - button "Elevated 0.48 Immediate investigation and mitigation of a strong gas leak near the market to prevent potential hazards. Safety 100 2 36m ago" [ref=e102] [cursor=pointer]:
+            - generic [ref=e103]:
+              - generic [ref=e104]: Elevated
+              - generic [ref=e106]: "0.48"
+            - paragraph [ref=e107]: Immediate investigation and mitigation of a strong gas leak near the market to prevent potential hazards.
+            - generic [ref=e108]:
+              - generic [ref=e109]: Safety
+              - generic [ref=e110]:
+                - img [ref=e111]
+                - strong [ref=e116]: "100"
+              - generic [ref=e117]:
+                - img [ref=e118]
+                - strong [ref=e121]: "2"
+              - generic [ref=e122]:
+                - img [ref=e123]
+                - text: 36m ago
+          - button "Elevated 0.39 Repair a burst water pipeline causing street flooding near a residential area to restore access and prevent further disruption. Water 50 1 12h ago" [ref=e126] [cursor=pointer]:
+            - generic [ref=e127]:
+              - generic [ref=e128]: Elevated
+              - generic [ref=e130]: "0.39"
+            - paragraph [ref=e131]: Repair a burst water pipeline causing street flooding near a residential area to restore access and prevent further disruption.
+            - generic [ref=e132]:
+              - generic [ref=e133]: Water
+              - generic [ref=e134]:
+                - img [ref=e135]
+                - strong [ref=e140]: "50"
+              - generic [ref=e141]:
+                - img [ref=e142]
+                - strong [ref=e145]: "1"
+              - generic [ref=e146]:
+                - img [ref=e147]
+                - text: 12h ago
+    - contentinfo [ref=e150]:
+      - generic [ref=e151]:
+        - generic [ref=e152]: In view
+        - generic [ref=e154]:
+          - text: "2"
+          - generic [ref=e155]: / 2 total
+      - generic [ref=e156]:
+        - generic [ref=e157]: Critical
+        - generic [ref=e159]: "0"
+      - generic [ref=e160]:
+        - generic [ref=e161]: Elevated
+        - generic [ref=e163]: "2"
+      - generic [ref=e164]:
+        - generic [ref=e165]: Routine
+        - generic [ref=e167]: "0"
+      - generic [ref=e168]:
+        - generic [ref=e169]: People affected
+        - generic [ref=e171]: "150"
+      - generic [ref=e172]:
+        - generic [ref=e173]: Source reports
+        - generic [ref=e175]: "3"
+      - generic [ref=e176]:
+        - generic [ref=e177]: Top categories
+        - generic [ref=e178]: Safety · 1
+        - generic [ref=e180]: Water · 1
