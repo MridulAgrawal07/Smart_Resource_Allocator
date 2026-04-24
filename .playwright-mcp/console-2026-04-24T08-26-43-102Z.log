@@ -1,0 +1,2 @@
+[     255ms] The requested module '/node_modules/.vite/deps/react-resizable-panels.js?v=78880253' does not provide an export named 'PanelGroup'
+[     252ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/favicon.ico:0

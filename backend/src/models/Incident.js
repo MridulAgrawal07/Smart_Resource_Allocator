@@ -86,7 +86,7 @@ const incidentSchema = new mongoose.Schema(
       index: true,
     },
 
-    assigned_volunteer_ids: [String],
+    assigned_volunteer_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' }],
     assignment_history: [assignmentHistorySchema],
 
     resolution_proof_refs: [String],
@@ -99,6 +99,8 @@ const incidentSchema = new mongoose.Schema(
 
     escalation_level: { type: Number, default: 0 },
     escalation_history: [escalationEntrySchema],
+
+    embedding: { type: [Number], default: undefined },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'last_updated_at' } }
 );

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Map as MapIcon, Zap, Loader, CheckCircle, UserCheck, AlertTriangle } from 'lucide-react';
+import { Map as MapIcon, Zap, Loader, CheckCircle, UserCheck, AlertTriangle, Maximize2, Minimize2 } from 'lucide-react';
 import { scoreBand, formatScore, formatRelative, latLngFromIncident } from '../util';
-import { assignIncident } from '../api';
+import { fetchMatches, confirmAssignment } from '../api';
 import { showToast } from './Toast';
 
 function makePinIcon(band) {
@@ -57,25 +57,28 @@ function BreakdownBars({ breakdown }) {
 
 function IncidentPopup({ inc, onAssigned }) {
   const band = scoreBand(inc.impact_score);
-  const [matchState, setMatchState] = useState('idle'); // idle | loading | done | error | no-match
+  // idle | loading | selecting | confirming | done | error | no-match
+  const [matchState, setMatchState] = useState('idle');
+  const [candidates, setCandidates] = useState([]);
+  const [selected, setSelected] = useState(new Set());
   const [result, setResult] = useState(null);
   const [localStatus, setLocalStatus] = useState(inc.status);
 
+  const alreadyAssigned = localStatus === 'assigned' || localStatus === 'in_progress';
+
   const handleMatch = async (e) => {
-    e.stopPropagation(); // prevent Leaflet from interpreting as map click
+    e.stopPropagation();
     setMatchState('loading');
     try {
-      const res = await assignIncident(inc._id);
-      if (!res.assigned && (!res.candidates || res.candidates.length === 0)) {
+      const res = await fetchMatches(inc._id);
+      if (!res.candidates || res.candidates.length === 0) {
         setMatchState('no-match');
         showToast('No eligible volunteers found for this incident', 'error');
         return;
       }
-      setResult(res);
-      setMatchState('done');
-      setLocalStatus('assigned');
-      showToast(`Match successful: ${res.assigned.name} assigned!`);
-      if (onAssigned) onAssigned(inc._id, res);
+      setCandidates(res.candidates);
+      setSelected(new Set());
+      setMatchState('selecting');
     } catch (err) {
       console.error('[match]', err);
       setMatchState('error');
@@ -84,7 +87,31 @@ function IncidentPopup({ inc, onAssigned }) {
     }
   };
 
-  const alreadyAssigned = localStatus === 'assigned' || localStatus === 'in_progress';
+  const toggleVolunteer = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleConfirm = async (e) => {
+    e.stopPropagation();
+    setMatchState('confirming');
+    try {
+      const res = await confirmAssignment(inc._id, [...selected]);
+      setResult(res);
+      setMatchState('done');
+      setLocalStatus('assigned');
+      const names = res.assigned.map((a) => a.name).join(', ');
+      showToast(`Assigned: ${names}`);
+      if (onAssigned) onAssigned(inc._id, res);
+    } catch (err) {
+      console.error('[confirm]', err);
+      showToast('Assignment failed — please try again', 'error');
+      setMatchState('selecting');
+    }
+  };
 
   return (
     <div className="popup">
@@ -132,56 +159,123 @@ function IncidentPopup({ inc, onAssigned }) {
 
       {/* ── Smart Match Action ── */}
       <div className="popup-action">
+
+        {/* ── idle: not yet assigned ── */}
         {matchState === 'idle' && !alreadyAssigned && (
           <button type="button" className="match-btn" onClick={handleMatch}>
             <Zap size={14} strokeWidth={2.4} />
             Run Smart Match
           </button>
         )}
+
+        {/* ── idle: already assigned ── */}
         {matchState === 'idle' && alreadyAssigned && !result && (
           <div className="match-assigned-note">
             <CheckCircle size={13} />
             Volunteer already assigned
           </div>
         )}
+
+        {/* ── fetching candidates ── */}
         {matchState === 'loading' && (
           <button type="button" className="match-btn loading" disabled>
             <Loader size={14} className="field-spin" />
-            Searching for best match…
+            Finding best matches…
           </button>
         )}
+
+        {/* ── error ── */}
         {matchState === 'error' && (
           <div className="match-error">
             <AlertTriangle size={13} />
             Match failed — try again
           </div>
         )}
+
+        {/* ── no volunteers found ── */}
         {matchState === 'no-match' && (
           <div className="match-error">
             <AlertTriangle size={13} />
             No eligible volunteers found
           </div>
         )}
+
+        {/* ── select phase: checkbox list ── */}
+        {(matchState === 'selecting' || matchState === 'confirming') && (
+          <div className="match-select">
+            <div className="match-select-header">
+              <span>Select volunteers to assign</span>
+              <span className="match-select-hint">{selected.size} selected</span>
+            </div>
+            <div className="match-select-list">
+              {candidates.map((c, i) => {
+                const id = String(c.volunteer_id);
+                const checked = selected.has(id);
+                return (
+                  <label
+                    key={id}
+                    className={`match-option ${checked ? 'checked' : ''}`}
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="match-checkbox"
+                      checked={checked}
+                      onChange={() => toggleVolunteer(id)}
+                    />
+                    <span className="match-option-check" aria-hidden="true" />
+                    <span className="match-option-info">
+                      <span className="match-option-name">{c.name}</span>
+                      <span className="match-option-score">
+                        {(c.matchScore * 100).toFixed(0)}% match
+                      </span>
+                    </span>
+                    {i === 0 && <span className="match-top-badge">Top pick</span>}
+                  </label>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="match-confirm-btn"
+              onClick={handleConfirm}
+              disabled={selected.size === 0 || matchState === 'confirming'}
+            >
+              {matchState === 'confirming' ? (
+                <>
+                  <Loader size={13} className="field-spin" />
+                  Confirming…
+                </>
+              ) : (
+                <>
+                  <UserCheck size={13} strokeWidth={2.4} />
+                  Confirm Assignment{selected.size > 1 ? ` (${selected.size})` : ''}
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── done: confirmed ── */}
         {matchState === 'done' && result && (
           <div className="match-result">
             <div className="match-result-header">
               <CheckCircle size={13} />
-              <span>Assigned</span>
+              <span>Assignment confirmed</span>
             </div>
-            <div className="match-candidate top">
-              <UserCheck size={13} />
-              <span className="match-name">{result.assigned.name}</span>
-              <span className="match-score">{(result.assigned.matchScore * 100).toFixed(0)}%</span>
-            </div>
-            {result.alternatives?.slice(0, 2).map((alt) => (
-              <div key={alt.volunteer_id} className="match-candidate alt">
-                <span className="match-rank-dot" />
-                <span className="match-name">{alt.name}</span>
-                <span className="match-score">{(alt.matchScore * 100).toFixed(0)}%</span>
+            {result.assigned.map((a, i) => (
+              <div
+                key={String(a.volunteer_id)}
+                className={`match-candidate top`}
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <UserCheck size={13} />
+                <span className="match-name">{a.name}</span>
               </div>
             ))}
           </div>
         )}
+
       </div>
     </div>
   );
@@ -194,6 +288,16 @@ function FitToMarkers({ points }) {
     const bounds = L.latLngBounds(points);
     map.fitBounds(bounds, { padding: [60, 60], maxZoom: 13 });
   }, [points.map((p) => p.join(',')).join('|')]); // eslint-disable-line
+  return null;
+}
+
+function MapSizer({ isMaximized }) {
+  const map = useMap();
+  useEffect(() => {
+    // After the CSS transition ends, tell Leaflet the container resized
+    const timer = setTimeout(() => map.invalidateSize(), 320);
+    return () => clearTimeout(timer);
+  }, [isMaximized, map]);
   return null;
 }
 
@@ -214,7 +318,7 @@ function FlyToSelected({ selectedId, markerRefs, visible }) {
   return null;
 }
 
-export default function CommandMap({ incidents, selectedId, onSelect, onAssigned }) {
+export default function CommandMap({ incidents, selectedId, onSelect, onAssigned, isMaximized, onToggleMaximize }) {
   const markerRefs = useRef(new Map());
 
   const setMarkerRef = useCallback((id, ref) => {
@@ -232,7 +336,7 @@ export default function CommandMap({ incidents, selectedId, onSelect, onAssigned
   const points = visible.map((x) => x.ll);
 
   return (
-    <section className="map-region card">
+    <section className={`map-region card${isMaximized ? ' map-maximized' : ''}`}>
       <div className="map-head">
         <div className="title">
           <div className="icon-bubble" aria-hidden="true">
@@ -243,19 +347,31 @@ export default function CommandMap({ incidents, selectedId, onSelect, onAssigned
             <div className="subtitle">{visible.length} pinned incidents</div>
           </div>
         </div>
-        <div className="map-legend" role="list">
-          <div className="row" role="listitem">
-            <span className="dot" style={{ background: 'var(--critical)' }} />
-            Critical
+        <div className="map-head-right">
+          <div className="map-legend" role="list">
+            <div className="row" role="listitem">
+              <span className="dot" style={{ background: 'var(--critical)' }} />
+              Critical
+            </div>
+            <div className="row" role="listitem">
+              <span className="dot" style={{ background: 'var(--elevated)' }} />
+              Elevated
+            </div>
+            <div className="row" role="listitem">
+              <span className="dot" style={{ background: 'var(--nominal)' }} />
+              Routine
+            </div>
           </div>
-          <div className="row" role="listitem">
-            <span className="dot" style={{ background: 'var(--elevated)' }} />
-            Elevated
-          </div>
-          <div className="row" role="listitem">
-            <span className="dot" style={{ background: 'var(--nominal)' }} />
-            Routine
-          </div>
+          <button
+            type="button"
+            className="map-maximize-btn"
+            onClick={onToggleMaximize}
+            title={isMaximized ? 'Exit full screen' : 'Expand map'}
+          >
+            {isMaximized
+              ? <Minimize2 size={15} strokeWidth={2.2} />
+              : <Maximize2 size={15} strokeWidth={2.2} />}
+          </button>
         </div>
       </div>
 
@@ -276,6 +392,7 @@ export default function CommandMap({ incidents, selectedId, onSelect, onAssigned
 
           {points.length > 0 && <FitToMarkers points={points} />}
           <FlyToSelected selectedId={selectedId} markerRefs={markerRefs} visible={visible} />
+          <MapSizer isMaximized={isMaximized} />
 
           {visible.map(({ inc, ll }) => {
             const band = scoreBand(inc.impact_score);

@@ -36,8 +36,41 @@ export async function fetchVolunteers() {
   return res.json();
 }
 
-export async function assignIncident(incidentId) {
-  const res = await fetch(`/api/incidents/${incidentId}/assign`, { method: 'POST' });
-  if (!res.ok) throw new Error(`assignIncident failed: ${res.status}`);
+export async function fetchMatches(incidentId) {
+  const res = await fetch(`/api/incidents/${incidentId}/matches`);
+  if (!res.ok) throw new Error(`fetchMatches failed: ${res.status}`);
+  return res.json();
+}
+
+export async function confirmAssignment(incidentId, volunteerIds) {
+  const res = await fetch(`/api/incidents/${incidentId}/confirm-assignment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ volunteerIds }),
+  });
+  if (!res.ok) throw new Error(`confirmAssignment failed: ${res.status}`);
+  return res.json();
+}
+
+// ── Moderation Queue ──────────────────────────────────────────────
+
+export async function fetchPendingReports() {
+  const res = await fetch('/api/reports/pending');
+  if (!res.ok) throw new Error(`fetchPendingReports failed: ${res.status}`);
+  return res.json();
+}
+
+export async function approveReport(reportId) {
+  const res = await fetch(`/api/reports/${reportId}/approve`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `approveReport failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function rejectReport(reportId) {
+  const res = await fetch(`/api/reports/${reportId}/reject`, { method: 'POST' });
+  if (!res.ok) throw new Error(`rejectReport failed: ${res.status}`);
   return res.json();
 }

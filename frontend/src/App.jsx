@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, Radio, Inbox } from 'lucide-react';
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import TopBar from './components/TopBar';
 import CommandMap from './components/CommandMap';
 import LiveFeed from './components/LiveFeed';
+import PendingApprovals from './components/PendingApprovals';
 import StatsStrip from './components/StatsStrip';
 import { fetchIncidents, runAssistantQuery } from './api';
 import { applyAssistantFilter } from './util';
@@ -18,6 +20,9 @@ export default function App() {
   const [filter, setFilter] = useState(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [assistantState, setAssistantState] = useState('idle');
+  const [isMapMaximized, setIsMapMaximized] = useState(false);
+  const [rightTab, setRightTab] = useState('feed'); // 'feed' | 'inbox'
+  const [pendingCount, setPendingCount] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -111,17 +116,57 @@ export default function App() {
       )}
 
       <div className="workspace">
-        <CommandMap
-          incidents={visibleIncidents}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onAssigned={handleAssigned}
-        />
-        <LiveFeed
-          incidents={visibleIncidents}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
+        <PanelGroup direction="horizontal" className="workspace-panels">
+          <Panel defaultSize={60} minSize={25} className="workspace-panel">
+            <CommandMap
+              incidents={visibleIncidents}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onAssigned={handleAssigned}
+              isMaximized={isMapMaximized}
+              onToggleMaximize={() => setIsMapMaximized((v) => !v)}
+            />
+          </Panel>
+
+          <PanelResizeHandle className="workspace-resize-handle">
+            <div className="workspace-resize-bar" />
+          </PanelResizeHandle>
+
+          <Panel defaultSize={40} minSize={20} className="workspace-panel">
+            {/* Tab switcher — Live Feed vs Moderation Inbox */}
+            <div className="right-panel-tabs">
+              <button
+                type="button"
+                className={`right-panel-tab ${rightTab === 'feed' ? 'active' : ''}`}
+                onClick={() => setRightTab('feed')}
+              >
+                <Radio size={13} strokeWidth={2.2} />
+                Live Feed
+              </button>
+              <button
+                type="button"
+                className={`right-panel-tab ${rightTab === 'inbox' ? 'active' : ''}`}
+                onClick={() => setRightTab('inbox')}
+              >
+                <Inbox size={13} strokeWidth={2.2} />
+                Approvals
+                {pendingCount > 0 && (
+                  <span className="right-panel-tab-badge">{pendingCount}</span>
+                )}
+              </button>
+            </div>
+
+            {rightTab === 'feed' ? (
+              <LiveFeed
+                incidents={visibleIncidents}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            ) : (
+              <PendingApprovals onCountChange={setPendingCount} />
+            )}
+          </Panel>
+        </PanelGroup>
 
         {loadState === 'loading' && (
           <div className="region-overlay">

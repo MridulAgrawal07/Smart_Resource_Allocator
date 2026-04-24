@@ -1,4 +1,5 @@
 const Incident = require('../models/Incident');
+const Volunteer = require('../models/Volunteer');
 const { parseAssistantQuery } = require('../services/assistant.service');
 const Report = require('../models/Report');
 
@@ -25,6 +26,19 @@ async function listOpenIncidents(req, res, next) {
       : [];
     const reportById = new Map(reports.map((r) => [String(r._id), r]));
 
+    // Batch-load volunteer names for assigned incidents
+    const allVolunteerIds = [
+      ...new Set(
+        incidents.flatMap((inc) => inc.assigned_volunteer_ids || [])
+      ),
+    ];
+    const volunteers = allVolunteerIds.length
+      ? await Volunteer.find({ _id: { $in: allVolunteerIds } })
+          .select('_id name')
+          .lean()
+      : [];
+    const volunteerById = new Map(volunteers.map((v) => [String(v._id), v.name]));
+
     const enriched = incidents.map((inc) => {
       const sampleReport = (inc.contributing_report_ids || [])
         .map((rid) => reportById.get(String(rid)))
@@ -34,6 +48,12 @@ async function listOpenIncidents(req, res, next) {
         sampleReport?.extracted_fields?.summarized_need ||
         sampleReport?.original_text ||
         '(no summary available)';
+
+      const assigned_volunteer_ids = inc.assigned_volunteer_ids || [];
+      const assigned_volunteers = assigned_volunteer_ids.map((id) => ({
+        id: String(id),
+        name: volunteerById.get(String(id)) || 'Unknown',
+      }));
 
       return {
         _id: inc._id,
@@ -45,7 +65,8 @@ async function listOpenIncidents(req, res, next) {
         status: inc.status,
         location_centroid: inc.location_centroid,
         sanitized_location: inc.sanitized_location,
-        assigned_volunteer_ids: inc.assigned_volunteer_ids || [],
+        assigned_volunteer_ids,
+        assigned_volunteers,
         contributing_count: (inc.contributing_report_ids || []).length,
         summarized_need,
         created_at: inc.created_at,

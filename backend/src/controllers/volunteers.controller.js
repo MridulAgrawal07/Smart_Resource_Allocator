@@ -1,5 +1,6 @@
 const Volunteer = require('../models/Volunteer');
 const Incident = require('../models/Incident');
+const Report = require('../models/Report');
 const { findBestVolunteers } = require('../services/matching.service');
 
 // ── POST /api/volunteers/seed ────────────────────────────────────
@@ -131,67 +132,24 @@ async function seedVolunteers(req, res, next) {
   }
 }
 
-// ── POST /api/incidents/:id/assign ───────────────────────────────
-// Runs the matching pipeline, picks the top volunteer, assigns them.
-async function assignVolunteer(req, res, next) {
+// ── GET /api/incidents/:id/matches ──────────────────────────────
+// Read-only: runs matching algorithm and returns top 3-5 candidates.
+// Does NOT persist anything to the database.
+async function getMatches(req, res, next) {
   try {
     const { id } = req.params;
 
-    // 1. Load incident
-    const incident = await Incident.findById(id);
-    if (!incident) {
-      return res.status(404).json({ error: 'Incident not found' });
-    }
-    if (incident.status === 'closed') {
-      return res.status(400).json({ error: 'Cannot assign volunteers to a closed incident' });
-    }
+    const incident = await Incident.findById(id).lean();
+    if (!incident) return res.status(404).json({ error: 'Incident not found' });
 
-    // 2. Run matching pipeline
     const ranked = await findBestVolunteers(id, { limit: 5 });
     if (ranked.length === 0) {
-      return res.status(200).json({
-        message: 'No eligible volunteers found for this incident',
-        incident_id: id,
-        candidates: [],
-      });
+      return res.json({ incident_id: id, candidates: [] });
     }
 
-    // 3. Pick the top-ranked volunteer
-    const best = ranked[0];
-    const volunteer = await Volunteer.findById(best.volunteer._id);
-
-    // 4. Update volunteer state
-    volunteer.current_status = 'assigned';
-    volunteer.active_assignments.push(incident._id);
-    volunteer.total_assignments += 1;
-    await volunteer.save();
-
-    // 5. Update incident state
-    incident.status = 'assigned';
-    incident.assigned_volunteer_ids.push(String(volunteer._id));
-    incident.assignment_history.push({
-      volunteer_id: String(volunteer._id),
-      assigned_at: new Date(),
-      status: 'assigned',
-    });
-    await incident.save();
-
-    console.log(
-      `[matching] assigned volunteer ${volunteer.name} (${volunteer._id}) to incident ${incident._id} with score ${best.matchScore}`
-    );
-
-    // 6. Return the full ranking so the coordinator can see alternatives
     return res.json({
-      message: `Assigned ${volunteer.name} to incident`,
-      incident_id: incident._id,
-      incident_status: incident.status,
-      assigned: {
-        volunteer_id: volunteer._id,
-        name: volunteer.name,
-        matchScore: best.matchScore,
-        breakdown: best.breakdown,
-      },
-      alternatives: ranked.slice(1).map((r) => ({
+      incident_id: id,
+      candidates: ranked.map((r) => ({
         volunteer_id: r.volunteer._id,
         name: r.volunteer.name,
         matchScore: r.matchScore,
@@ -203,16 +161,136 @@ async function assignVolunteer(req, res, next) {
   }
 }
 
-// ── GET /api/volunteers ──────────────────────────────────────────
-async function listVolunteers(req, res, next) {
+// ── POST /api/incidents/:id/confirm-assignment ───────────────────
+// Persists the coordinator's volunteer selection.
+// Body: { volunteerIds: string[] }
+async function confirmAssignment(req, res, next) {
   try {
-    const volunteers = await Volunteer.find()
-      .sort({ trust_score: -1 })
-      .lean();
-    return res.json({ count: volunteers.length, volunteers });
+    const { id } = req.params;
+    const { volunteerIds } = req.body || {};
+
+    if (!Array.isArray(volunteerIds) || volunteerIds.length === 0) {
+      return res.status(400).json({ error: 'volunteerIds must be a non-empty array' });
+    }
+
+    const incident = await Incident.findById(id);
+    if (!incident) return res.status(404).json({ error: 'Incident not found' });
+    if (incident.status === 'closed') {
+      return res.status(400).json({ error: 'Cannot assign volunteers to a closed incident' });
+    }
+
+    const volunteers = await Volunteer.find({ _id: { $in: volunteerIds } });
+    if (volunteers.length === 0) {
+      return res.status(404).json({ error: 'No volunteers found for the given IDs' });
+    }
+
+    const now = new Date();
+
+    // Mark each volunteer as assigned
+    await Promise.all(
+      volunteers.map((vol) => {
+        vol.current_status = 'assigned';
+        vol.active_assignments.push(incident._id);
+        vol.total_assignments += 1;
+        return vol.save();
+      })
+    );
+
+    // Update incident with all selected volunteers
+    incident.status = 'assigned';
+    for (const vol of volunteers) {
+      incident.assigned_volunteer_ids.push(vol._id);
+      incident.assignment_history.push({
+        volunteer_id: String(vol._id),
+        assigned_at: now,
+        status: 'assigned',
+      });
+    }
+    await incident.save();
+
+    const names = volunteers.map((v) => v.name).join(', ');
+    console.log(`[matching] confirmed assignment of [${names}] to incident ${incident._id}`);
+
+    return res.json({
+      incident_id: incident._id,
+      incident_status: incident.status,
+      assigned: volunteers.map((v) => ({ volunteer_id: v._id, name: v.name })),
+    });
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = { seedVolunteers, assignVolunteer, listVolunteers };
+// ── GET /api/volunteers ──────────────────────────────────────────
+// Returns all volunteers enriched with their active incident details.
+// Assigned volunteers include `active_incident` (category, summarized_need,
+// impact_score) so the roster UI can show the mission box without a
+// second round-trip.
+async function listVolunteers(req, res, next) {
+  try {
+    const volunteers = await Volunteer.find().sort({ trust_score: -1 }).lean();
+
+    // Reverse-lookup: find active incidents for all assigned volunteers.
+    // Using Incident.assigned_volunteer_ids as the authoritative source.
+    const assignedIds = volunteers
+      .filter((v) => v.current_status === 'assigned')
+      .map((v) => v._id);
+
+    let incidentByVolId = new Map();
+
+    if (assignedIds.length) {
+      const activeIncidents = await Incident.find({
+        assigned_volunteer_ids: { $in: assignedIds },
+        status: { $in: ['assigned', 'in_progress'] },
+      })
+        .select('_id category severity impact_score status assigned_volunteer_ids contributing_report_ids')
+        .lean();
+
+      // Pull one sample report per incident to get summarized_need
+      const reportIds = activeIncidents.flatMap((inc) => inc.contributing_report_ids || []);
+      const reports = reportIds.length
+        ? await Report.find({ _id: { $in: reportIds } })
+            .select('_id extracted_fields original_text')
+            .lean()
+        : [];
+      const reportById = new Map(reports.map((r) => [String(r._id), r]));
+
+      for (const inc of activeIncidents) {
+        const sampleReport = (inc.contributing_report_ids || [])
+          .map((rid) => reportById.get(String(rid)))
+          .find(Boolean);
+
+        const summarized_need =
+          sampleReport?.extracted_fields?.summarized_need ||
+          sampleReport?.original_text ||
+          null;
+
+        const payload = {
+          _id: inc._id,
+          category: inc.category,
+          severity: inc.severity,
+          impact_score: inc.impact_score,
+          status: inc.status,
+          summarized_need,
+        };
+
+        // Map every assigned volunteer on this incident
+        for (const volId of inc.assigned_volunteer_ids || []) {
+          const key = String(volId);
+          if (!incidentByVolId.has(key)) incidentByVolId.set(key, payload);
+        }
+      }
+    }
+
+    const enriched = volunteers.map((v) => ({
+      ...v,
+      active_incident: incidentByVolId.get(String(v._id)) || null,
+    }));
+
+    return res.json({ count: enriched.length, volunteers: enriched });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { seedVolunteers, getMatches, confirmAssignment, listVolunteers };

@@ -132,4 +132,14 @@ async function extractFromReport({ text, imageBuffer, imageMimeType }) {
   }
 }
 
-module.exports = { extractFromReport };
+// ── Text Embeddings ───────────────────────────────────────────────
+// gemini-embedding-001 is the current stable embedding model (successor
+// to text-embedding-004). Produces 3072-dim vectors — match this in
+// the MongoDB Atlas 'incident_semantic_search' vector index definition.
+async function generateEmbedding(text) {
+  const model = getClient().getGenerativeModel({ model: 'gemini-embedding-001' });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+}
+
+module.exports = { extractFromReport, generateEmbedding };

@@ -4,7 +4,7 @@ const morgan = require('morgan');
 
 const reportsRoutes = require('./routes/reports.routes');
 const incidentsRoutes = require('./routes/incidents.routes');
-const { router: volunteersRoutes, assignVolunteer } = require('./routes/volunteers.routes');
+const { router: volunteersRoutes, getMatches, confirmAssignment } = require('./routes/volunteers.routes');
 const { run: seedCity } = require('./scripts/seedCity');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -23,8 +23,9 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/incidents', incidentsRoutes);
 app.use('/api/volunteers', volunteersRoutes);
 
-// Assignment endpoint lives on the incident path but uses the volunteer matching pipeline
-app.post('/api/incidents/:id/assign', assignVolunteer);
+// Matching + assignment endpoints live on the incident path, powered by the volunteer pipeline
+app.get('/api/incidents/:id/matches', getMatches);
+app.post('/api/incidents/:id/confirm-assignment', confirmAssignment);
 
 // Admin: full city seed — clears all data and populates with Jaipur test data
 app.post('/api/admin/seed-all', async (req, res, next) => {

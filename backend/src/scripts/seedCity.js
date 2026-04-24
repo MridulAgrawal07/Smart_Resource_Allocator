@@ -98,7 +98,6 @@ function buildVolunteers() {
     const skills = SKILL_POOLS[i % SKILL_POOLS.length];
     const wellnessRaw = randomBetween(0.15, 1.0);
     const isBurntOut = wellnessRaw < 0.30;
-    const isAssigned = !isBurntOut && Math.random() < 0.2;
 
     return {
       name,
@@ -107,7 +106,10 @@ function buildVolunteers() {
       transportation_mode: randomFrom(TRANSPORT_MODES),
       last_known_location: { type: 'Point', coordinates: [loc.lng, loc.lat] },
       service_radius: randomBetween(5, 30),
-      current_status: isBurntOut ? 'resting' : isAssigned ? 'assigned' : 'available',
+      // Only mark as 'resting' here — 'assigned' requires a real incident link
+      // which only confirmAssignment creates. Faking it leaves volunteers with
+      // a Deployed badge but no incident, breaking the roster mission box.
+      current_status: isBurntOut ? 'resting' : 'available',
       wellness_score: Math.round(wellnessRaw * 100) / 100,
       trust_score: randomBetween(0.40, 0.98),
       hours_last_7_days: Math.round(randomBetween(0, 40)),

@@ -47,6 +47,13 @@ const reportSchema = new mongoose.Schema(
     submitted_at: { type: Date, default: Date.now },
     received_at: { type: Date, default: Date.now },
     incident_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Incident', default: null },
+    embedding: { type: [Number], default: undefined },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+      index: true,
+    },
   },
   { timestamps: true }
 );
