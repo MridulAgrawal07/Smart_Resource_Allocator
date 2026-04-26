@@ -7,11 +7,12 @@ import LiveFeed from './components/LiveFeed';
 import PendingApprovals from './components/PendingApprovals';
 import StatsStrip from './components/StatsStrip';
 import StatusCapsule from './components/StatusCapsule';
-import { fetchIncidents, runAssistantQuery } from './api';
+import { fetchIncidents, runAssistantQuery, fetchPendingReports } from './api';
 import { applyAssistantFilter } from './util';
 import { useTheme } from './context/ThemeContext';
 
 const POLL_INTERVAL_MS = 15_000;
+const PENDING_POLL_MS = 10_000;
 
 export default function App() {
   const [incidents, setIncidents] = useState([]);
@@ -45,6 +46,25 @@ export default function App() {
     const id = setInterval(refresh, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [refresh]);
+
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const data = await fetchPendingReports();
+      const backendCount = Array.isArray(data.reports) ? data.reports.length : 0;
+      let audioCount = 0;
+      try {
+        const items = JSON.parse(localStorage.getItem('pending_audio_reports') || '[]');
+        audioCount = Array.isArray(items) ? items.length : 0;
+      } catch { /* ignore */ }
+      setPendingCount(backendCount + audioCount);
+    } catch { /* ignore — badge stays at last known value */ }
+  }, []);
+
+  useEffect(() => {
+    refreshPendingCount();
+    const id = setInterval(refreshPendingCount, PENDING_POLL_MS);
+    return () => clearInterval(id);
+  }, [refreshPendingCount]);
 
   const handleAssistant = useCallback(async (query) => {
     setAssistantState('loading');
@@ -173,7 +193,14 @@ export default function App() {
                 onSelect={setSelectedId}
               />
             ) : (
-              <PendingApprovals onCountChange={setPendingCount} />
+              <PendingApprovals onCountChange={(backendCount) => {
+                let audioCount = 0;
+                try {
+                  const items = JSON.parse(localStorage.getItem('pending_audio_reports') || '[]');
+                  audioCount = Array.isArray(items) ? items.length : 0;
+                } catch { /* ignore */ }
+                setPendingCount(backendCount + audioCount);
+              }} />
             )}
           </Panel>
         </PanelGroup>

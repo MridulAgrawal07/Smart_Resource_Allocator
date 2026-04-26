@@ -1537,18 +1537,6 @@ a { color: var(--primary); text-decoration: none; }
   border-color: var(--border-strong);
 }
 
-/* Decorative accent shape — top-right corner */
-.stat-accent {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 52px;
-  height: 52px;
-  border-bottom-left-radius: 20px;
-  opacity: 0.12;
-  pointer-events: none;
-}
-
 .stat .k {
   font-size: 10px;
   font-weight: 700;
@@ -1557,6 +1545,7 @@ a { color: var(--primary); text-decoration: none; }
   color: var(--text-3);
   position: relative;
   z-index: 1;
+  transition: color .3s var(--ease);
 }
 .stat .v {
   font-size: 40px;
@@ -1567,21 +1556,22 @@ a { color: var(--primary); text-decoration: none; }
   letter-spacing: -0.03em;
   position: relative;
   z-index: 1;
+  transition: color .3s var(--ease);
 }
 
-/* Per-card accent colors and hover tints */
-.stat.crit .stat-accent  { background: #ef4444; }
-.stat.crit:hover         { background: #fff5f5; }
-.stat.crit .v            { color: #dc2626; }
+/* Per-card hover — solid fill + forced text */
+.stat.crit:hover    { background: #dc2626; }
+.stat.crit:hover .k, .stat.crit:hover .v { color: #ffffff; }
+.stat.crit .v       { color: #dc2626; }
 
-.stat.warn .stat-accent  { background: #f97316; }
-.stat.warn:hover         { background: #fff7ed; }
+.stat.warn:hover    { background: #eab308; }
+.stat.warn:hover .k, .stat.warn:hover .v { color: #111827; }
 
-.stat.nominal .stat-accent { background: #22c55e; }
-.stat.nominal:hover        { background: #f0fdf4; }
+.stat.nominal:hover { background: #16a34a; }
+.stat.nominal:hover .k, .stat.nominal:hover .v { color: #ffffff; }
 
-.stat.people .stat-accent { background: #6b7280; }
-.stat.people:hover        { background: #f8fafc; }
+.stat.people:hover  { background: #000000; }
+.stat.people:hover .k, .stat.people:hover .v { color: #ffffff; }
 
 
 /* =========================================================================
@@ -2061,6 +2051,57 @@ a { color: var(--primary); text-decoration: none; }
   transition: background .15s;
 }
 .field-gps-clear:hover { background: rgba(5,150,105,0.2); }
+
+/* Hybrid location input */
+.field-location-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.field-location-input {
+  width: 100%;
+  padding: 14px 48px 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.field-location-input:focus {
+  outline: 0;
+  border-color: var(--field-accent);
+  box-shadow: 0 0 0 4px var(--field-accent-50);
+}
+.field-location-input::placeholder { color: var(--text-4); }
+.field-location-gps {
+  position: absolute;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.field-location-gps:hover { background: var(--surface-2); color: var(--field-accent); }
+.field-location-gps.locating { color: var(--field-accent); }
+.field-location-gps:disabled { cursor: default; }
+.field-gps-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--field-accent);
+  padding: 3px 0 0 2px;
+}
 
 /* Spinner for loading states */
 .field-spin {
@@ -3323,6 +3364,17 @@ a { color: var(--primary); text-decoration: none; }
 [data-theme="dark"] .feed-region.card,
 [data-theme="dark"] .approval-region.card { background: #14202f; }
 
+/* Pending approval cards — dark mode contrast fix */
+[data-theme="dark"] .pending-card {
+  background: transparent;
+  border-bottom-color: var(--divider);
+  border-left-color: #3d5068;
+}
+[data-theme="dark"] .pending-card:hover { background: rgba(255, 255, 255, 0.04); }
+[data-theme="dark"] .pending-card-text  { color: var(--text); }
+[data-theme="dark"] .pending-card-meta  { color: var(--text-3); }
+[data-theme="dark"] .pending-meta-item svg { color: var(--text-4); }
+
 /* Right-panel outer tab row */
 [data-theme="dark"] .right-panel-tabs { background: transparent; }
 [data-theme="dark"] .right-panel-tab {
@@ -3388,11 +3440,18 @@ a { color: var(--primary); text-decoration: none; }
 [data-theme="dark"] .stat .k { color: #94a3b8; }
 [data-theme="dark"] .stat .v { color: #f1f5f9; }
 [data-theme="dark"] .stat.crit .v { color: #f87171; }
-[data-theme="dark"] .stat-accent { opacity: 0.2; }
-[data-theme="dark"] .stat.crit:hover    { background: rgba(239,68,68,0.07); }
-[data-theme="dark"] .stat.warn:hover    { background: rgba(249,115,22,0.07); }
-[data-theme="dark"] .stat.nominal:hover { background: rgba(34,197,94,0.07); }
-[data-theme="dark"] .stat.people:hover  { background: rgba(107,114,128,0.09); }
+[data-theme="dark"] .stat.crit:hover    { background: #dc2626; }
+[data-theme="dark"] .stat.crit:hover .k,
+[data-theme="dark"] .stat.crit:hover .v { color: #ffffff; }
+[data-theme="dark"] .stat.warn:hover    { background: #eab308; }
+[data-theme="dark"] .stat.warn:hover .k,
+[data-theme="dark"] .stat.warn:hover .v { color: #111827; }
+[data-theme="dark"] .stat.nominal:hover { background: #16a34a; }
+[data-theme="dark"] .stat.nominal:hover .k,
+[data-theme="dark"] .stat.nominal:hover .v { color: #ffffff; }
+[data-theme="dark"] .stat.people:hover  { background: #000000; }
+[data-theme="dark"] .stat.people:hover .k,
+[data-theme="dark"] .stat.people:hover .v { color: #ffffff; }
 
 /* Portal nav sidebar — dark mode */
 [data-theme="dark"] .portal-nav-sidebar {
@@ -3500,12 +3559,12 @@ a { color: var(--primary); text-decoration: none; }
 /* ── Field Portal — dark hero ─────────────────────────────────────── */
 [data-theme="dark"] .field-portal { background: var(--bg); }
 [data-theme="dark"] .field-hero {
-  background: linear-gradient(135deg, #071a12 0%, #091510 40%, var(--bg) 100%);
-  border-bottom-color: rgba(5, 150, 105, 0.15);
+  background: transparent;
+  border-bottom-color: transparent;
 }
 [data-theme="dark"] .field-hero h1 { color: var(--text); }
 [data-theme="dark"] .field-hero p   { color: var(--text-2); }
-[data-theme="dark"] .field-form     { background: var(--bg); }
+[data-theme="dark"] .field-form     { background: transparent; }
 [data-theme="dark"] .field-capture-btn {
   background: rgba(5, 150, 105, 0.06);
   border-color: rgba(5, 150, 105, 0.18);
@@ -3526,12 +3585,22 @@ a { color: var(--primary); text-decoration: none; }
   background: rgba(5, 150, 105, 0.06);
   border-color: rgba(5, 150, 105, 0.18);
 }
+[data-theme="dark"] .field-location-input {
+  background: #1e293b;
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] .field-location-input:focus {
+  border-color: var(--field-accent);
+  box-shadow: 0 0 0 4px var(--field-accent-50);
+}
+[data-theme="dark"] .field-location-gps:hover { background: rgba(255,255,255,0.07); }
 
 /* ── Volunteer Portal — dark hero ─────────────────────────────────── */
 [data-theme="dark"] .vol-portal           { background: var(--bg); }
 [data-theme="dark"] .vol-selector-section {
-  background: linear-gradient(135deg, #1a0f03 0%, #150c02 40%, var(--bg) 100%);
-  border-bottom-color: rgba(217, 119, 6, 0.15);
+  background: transparent;
+  border-bottom-color: transparent;
 }
 [data-theme="dark"] .vol-selector-header h1 { color: var(--text); }
 [data-theme="dark"] .vol-selector-header p  { color: var(--text-2); }
@@ -3544,3 +3613,253 @@ a { color: var(--primary); text-decoration: none; }
 [data-theme="dark"] .vol-profile-card      { background: var(--surface); border-color: var(--border); }
 [data-theme="dark"] .vol-mission-box       { background: rgba(255,255,255,0.04); border-color: var(--border); }
 [data-theme="dark"] .vol-wellness-alert    { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); }
+
+/* =========================================================================
+   AUDIO RECORDING — Field Portal
+   ========================================================================= */
+
+/* Start recording button (mirrors .field-capture-btn) */
+.audio-record-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: var(--r-xl);
+  cursor: pointer;
+  width: 100%;
+  transition: border-color .2s var(--ease), background .2s var(--ease);
+}
+.audio-record-btn:hover {
+  border-color: var(--field-accent);
+  background: var(--field-accent-50);
+}
+.audio-record-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: white;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(5,150,105,0.25);
+}
+.audio-record-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.audio-record-hint {
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+/* Active recording UI */
+.audio-recording-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+}
+.audio-recording-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.audio-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: audio-pulse 1.1s ease-in-out infinite;
+}
+@keyframes audio-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.75); }
+}
+.audio-rec-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Slab visualizer */
+.audio-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 48px;
+  width: 100%;
+}
+.audio-slab {
+  width: 9px;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to top, #059669 0%, #10b981 100%);
+  transform-origin: bottom;
+  transform: scaleY(0.08);
+}
+
+/* Stop button */
+.audio-stop-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--r-full);
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.audio-stop-btn:hover { background: #fee2e2; border-color: #fca5a5; }
+
+/* Preview + submit */
+.audio-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+}
+.audio-preview-player {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--r-md);
+  accent-color: var(--field-accent);
+}
+.audio-preview-actions {
+  display: flex;
+  gap: 10px;
+}
+.audio-submit-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 18px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--r-lg);
+  border: none;
+  cursor: pointer;
+  transition: opacity .2s;
+  box-shadow: 0 3px 10px rgba(5,150,105,0.2);
+}
+.audio-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+.audio-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.audio-clear-btn:hover { background: var(--border); color: var(--text); }
+.audio-clear-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Audio reports in PendingApprovals ─── */
+.audio-reports-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.audio-reports-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 2px 2px;
+}
+.audio-report-card { border-left: 3px solid var(--field-accent); }
+.audio-report-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.audio-report-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--field-accent-50);
+  border: 1px solid var(--field-accent-100);
+  border-radius: var(--r-full);
+  color: var(--field-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.audio-report-player {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--r-md);
+  accent-color: var(--field-accent);
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+[data-theme="dark"] .audio-record-btn {
+  background: rgba(5,150,105,0.06);
+  border-color: rgba(5,150,105,0.18);
+}
+[data-theme="dark"] .audio-record-btn:hover {
+  background: rgba(5,150,105,0.12);
+  border-color: rgba(5,150,105,0.32);
+}
+[data-theme="dark"] .audio-recording-ui {
+  background: var(--surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .audio-stop-btn {
+  background: rgba(239,68,68,0.08);
+  border-color: rgba(239,68,68,0.22);
+  color: #f87171;
+}
+[data-theme="dark"] .audio-stop-btn:hover {
+  background: rgba(239,68,68,0.14);
+  border-color: rgba(239,68,68,0.35);
+}
+[data-theme="dark"] .audio-preview-wrap {
+  background: var(--surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .audio-clear-btn {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+  color: var(--text-3);
+}
+[data-theme="dark"] .audio-clear-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+[data-theme="dark"] .audio-report-badge {
+  background: rgba(5,150,105,0.1);
+  border-color: rgba(5,150,105,0.25);
+}

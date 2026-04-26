@@ -19,22 +19,18 @@ export default function StatsStrip({ incidents }) {
   return (
     <footer className="stats-strip">
       <div className="stat crit">
-        <div className="stat-accent" />
         <span className="k">Critical Alerts</span>
         <span className="v">{totals.critical}</span>
       </div>
       <div className="stat warn">
-        <div className="stat-accent" />
         <span className="k">Elevated Risks</span>
         <span className="v">{totals.elevated}</span>
       </div>
       <div className="stat nominal">
-        <div className="stat-accent" />
         <span className="k">Routine Ops</span>
         <span className="v">{totals.routine}</span>
       </div>
       <div className="stat people">
-        <div className="stat-accent" />
         <span className="k">People Affected</span>
         <span className="v">{totals.people.toLocaleString()}</span>
       </div>
