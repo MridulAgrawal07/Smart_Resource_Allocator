@@ -1,23 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Search, Sparkles, Activity } from 'lucide-react';
-
-function useClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-function formatClock(d) {
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
-}
+import { useState } from 'react';
+import { Search, Sparkles, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TopBar({ onAssistantSubmit, assistantState }) {
-  const now = useClock();
+  const { isDarkMode, toggleDark: onToggleDark } = useTheme();
   const [value, setValue] = useState('');
 
   const submit = (e) => {
@@ -29,18 +15,7 @@ export default function TopBar({ onAssistantSubmit, assistantState }) {
 
   return (
     <header className="topbar">
-      <div className="brand">
-        <div className="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z" />
-            <path d="M9 12l2 2 4-4" />
-          </svg>
-        </div>
-        <div className="brand-text">
-          <div className="brand-name">SRA Coordinator</div>
-          <span className="brand-sub">Smart Resource Allocation</span>
-        </div>
-      </div>
+      <div className="control-panel-title">Control Panel</div>
 
       <div className="assistant-bar">
         <form className="assistant-form" onSubmit={submit} role="search">
@@ -82,19 +57,15 @@ export default function TopBar({ onAssistantSubmit, assistantState }) {
         </form>
       </div>
 
-      <div className="topbar-actions">
-        <div className="status-capsule">
-          <span className="status-capsule-live">
-            <span className="dot" />
-            Live
-          </span>
-          <span className="status-capsule-divider" />
-          <span className="status-capsule-clock">
-            <Activity size={11} />
-            {formatClock(now)}
-          </span>
-        </div>
-      </div>
+      <button
+        type="button"
+        className="dark-toggle"
+        onClick={onToggleDark}
+        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDarkMode ? <Sun size={17} strokeWidth={2.2} /> : <Moon size={17} strokeWidth={2.2} />}
+      </button>
     </header>
   );
 }

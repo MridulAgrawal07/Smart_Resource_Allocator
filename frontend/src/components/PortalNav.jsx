@@ -1,32 +1,53 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Radio, UserCheck } from 'lucide-react';
 
 const LINKS = [
-  { to: '/', label: 'Dashboard', sub: 'Coordinator', icon: LayoutDashboard },
-  { to: '/report', label: 'Field Report', sub: 'Capture', icon: Radio },
-  { to: '/volunteer', label: 'Volunteer', sub: 'Missions', icon: UserCheck },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/report', label: 'Field Report', icon: Radio },
+  { to: '/volunteer', label: 'Volunteer', icon: UserCheck },
 ];
 
 export default function PortalNav() {
   const { pathname } = useLocation();
+  const [isOpen, setIsOpen] = useState(true);
+
+  // After sidebar transition ends, nudge Leaflet/other resize listeners
+  useEffect(() => {
+    const id = setTimeout(() => window.dispatchEvent(new Event('resize')), 310);
+    return () => clearTimeout(id);
+  }, [isOpen]);
 
   return (
     <>
-      {/* Desktop: horizontal top strip below topbar */}
-      <nav className="portal-nav-desktop" aria-label="Portal navigation">
-        <div className="portal-nav-inner">
+      {/* Desktop: vertical left sidebar */}
+      <nav
+        className={`portal-nav-sidebar${isOpen ? '' : ' collapsed'}`}
+        aria-label="Portal navigation"
+      >
+        <button
+          type="button"
+          className="portal-sidebar-header"
+          onClick={() => setIsOpen((v) => !v)}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          <span className="portal-sidebar-brand">SRA</span>
+          <span className="portal-sidebar-brand-sub">Resource Allocator</span>
+        </button>
+        <div className="portal-sidebar-links">
           {LINKS.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               end={l.to === '/'}
               className={({ isActive }) =>
-                `portal-link ${isActive ? 'active' : ''}`
+                `portal-sidebar-link ${isActive ? 'active' : ''}`
               }
+              title={!isOpen ? l.label : undefined}
             >
-              <l.icon size={15} strokeWidth={2.2} />
-              <span className="portal-link-label">{l.label}</span>
-              <span className="portal-link-sub">{l.sub}</span>
+              <l.icon size={17} strokeWidth={2.2} />
+              <span className="portal-sidebar-link-label">{l.label}</span>
             </NavLink>
           ))}
         </div>

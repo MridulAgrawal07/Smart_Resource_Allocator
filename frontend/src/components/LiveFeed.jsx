@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Radio, Users, FileText, Clock, Inbox, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { scoreBand, formatScore, formatRelative } from '../util';
+import { scoreBand, formatRelative } from '../util';
 
 const URGENCY_LABEL = {
   crit: 'Critical',
@@ -8,8 +8,15 @@ const URGENCY_LABEL = {
   nominal: 'Routine',
 };
 
+function heatClass(score) {
+  if (score >= 80) return 'high';
+  if (score >= 40) return 'mid';
+  return 'low';
+}
+
 function UnassignedCard({ inc, active, onSelect }) {
   const band = scoreBand(inc.impact_score);
+  const priorityScore = Math.round((Number(inc.impact_score) || 0) * 100);
   const ref = useRef(null);
   useEffect(() => {
     if (active && ref.current) {
@@ -29,7 +36,12 @@ function UnassignedCard({ inc, active, onSelect }) {
           <span className="dot" />
           {URGENCY_LABEL[band]}
         </span>
-        <span className="score-num">{formatScore(inc.impact_score)}</span>
+        <div className="priority-heat">
+          <span className="score-label">{priorityScore}</span>
+          <div className="heat-bar">
+            <div className={`heat-fill ${heatClass(priorityScore)}`} style={{ width: `${priorityScore}%` }} />
+          </div>
+        </div>
       </div>
       <p className="need">{inc.summarized_need}</p>
       <div className="meta">

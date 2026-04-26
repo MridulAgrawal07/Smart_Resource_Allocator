@@ -6,8 +6,10 @@ import CommandMap from './components/CommandMap';
 import LiveFeed from './components/LiveFeed';
 import PendingApprovals from './components/PendingApprovals';
 import StatsStrip from './components/StatsStrip';
+import StatusCapsule from './components/StatusCapsule';
 import { fetchIncidents, runAssistantQuery } from './api';
 import { applyAssistantFilter } from './util';
+import { useTheme } from './context/ThemeContext';
 
 const POLL_INTERVAL_MS = 15_000;
 
@@ -23,6 +25,7 @@ export default function App() {
   const [isMapMaximized, setIsMapMaximized] = useState(false);
   const [rightTab, setRightTab] = useState('feed'); // 'feed' | 'inbox'
   const [pendingCount, setPendingCount] = useState(0);
+  const { isDarkMode } = useTheme();
 
   const refresh = useCallback(async () => {
     try {
@@ -80,7 +83,10 @@ export default function App() {
 
   return (
     <div className="app">
-      <TopBar onAssistantSubmit={handleAssistant} assistantState={assistantState} />
+      <TopBar
+        onAssistantSubmit={handleAssistant}
+        assistantState={assistantState}
+      />
 
       {filter && (
         <div className="filter-strip">
@@ -117,7 +123,7 @@ export default function App() {
 
       <div className="workspace">
         <PanelGroup direction="horizontal" className="workspace-panels">
-          <Panel defaultSize={60} minSize={25} className="workspace-panel">
+          <Panel defaultSize={55} minSize={25} className="workspace-panel">
             <CommandMap
               incidents={visibleIncidents}
               selectedId={selectedId}
@@ -125,6 +131,7 @@ export default function App() {
               onAssigned={handleAssigned}
               isMaximized={isMapMaximized}
               onToggleMaximize={() => setIsMapMaximized((v) => !v)}
+              isDarkMode={isDarkMode}
             />
           </Panel>
 
@@ -132,7 +139,7 @@ export default function App() {
             <div className="workspace-resize-bar" />
           </PanelResizeHandle>
 
-          <Panel defaultSize={40} minSize={20} className="workspace-panel">
+          <Panel defaultSize={45} minSize={20} className="workspace-panel">
             {/* Tab switcher — Live Feed vs Moderation Inbox */}
             <div className="right-panel-tabs">
               <button
@@ -154,6 +161,9 @@ export default function App() {
                   <span className="right-panel-tab-badge">{pendingCount}</span>
                 )}
               </button>
+              <div className="right-panel-tab-status">
+                <StatusCapsule />
+              </div>
             </div>
 
             {rightTab === 'feed' ? (
@@ -185,7 +195,7 @@ export default function App() {
         )}
       </div>
 
-      <StatsStrip incidents={visibleIncidents} totalUnfiltered={incidents.length} />
+      <StatsStrip incidents={visibleIncidents} />
     </div>
   );
 }
