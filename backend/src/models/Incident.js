@@ -87,6 +87,7 @@ const incidentSchema = new mongoose.Schema(
     },
 
     assigned_volunteer_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' }],
+    checked_in_volunteer_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' }],
     assignment_history: [assignmentHistorySchema],
 
     resolution_proof_refs: [String],

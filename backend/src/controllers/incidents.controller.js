@@ -67,6 +67,7 @@ async function listOpenIncidents(req, res, next) {
         sanitized_location: inc.sanitized_location,
         assigned_volunteer_ids,
         assigned_volunteers,
+        checked_in_volunteer_ids: (inc.checked_in_volunteer_ids || []).map(String),
         contributing_count: (inc.contributing_report_ids || []).length,
         summarized_need,
         created_at: inc.created_at,

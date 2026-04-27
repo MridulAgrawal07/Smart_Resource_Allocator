@@ -74,3 +74,33 @@ export async function rejectReport(reportId) {
   if (!res.ok) throw new Error(`rejectReport failed: ${res.status}`);
   return res.json();
 }
+
+// ── Geo-verified 2-step task flow ────────────────────────────────
+
+// Step 1: verify on-site arrival (does NOT resolve the incident)
+export async function geoCheckin(incidentId, volunteerId, lat, lng) {
+  const res = await fetch('/api/volunteers/checkin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ incidentId, volunteerId, lat, lng }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `geoCheckin failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Step 2: mark mission complete — releases all assigned volunteers
+export async function completeTask(incidentId, volunteerId) {
+  const res = await fetch('/api/volunteers/complete-task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ incidentId, volunteerId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `completeTask failed: ${res.status}`);
+  }
+  return res.json();
+}

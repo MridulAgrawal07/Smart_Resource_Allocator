@@ -14,9 +14,11 @@ import {
   Zap,
   ArrowLeft,
   Briefcase,
+  Flag,
 } from 'lucide-react';
-import { fetchVolunteers, fetchIncidents, confirmAssignment } from '../api';
+import { fetchVolunteers, fetchIncidents, confirmAssignment, geoCheckin, completeTask } from '../api';
 import { scoreBand, formatScore, formatRelative } from '../util';
+import { showToast } from '../components/Toast';
 
 // ── Roster card — one clickable tile per volunteer ─────────────────
 function RosterCard({ vol, onSelect }) {
@@ -127,7 +129,7 @@ export default function VolunteerPortal() {
   const [active, setActive]         = useState(null);
   const [incidents, setIncidents]   = useState([]);
   const [loadState, setLoadState]   = useState('loading');
-  const [checkedIn, setCheckedIn]   = useState(new Set());
+  const [taskStates, setTaskStates] = useState({}); // { [incId]: { phase, msg } }
   const [assigning, setAssigning]   = useState(null);
 
   const refresh = useCallback(async () => {
@@ -152,7 +154,84 @@ export default function VolunteerPortal() {
     return () => clearInterval(id);
   }, [refresh]);
 
-  const handleCheckin = (incId) => setCheckedIn((prev) => new Set(prev).add(incId));
+  // Clear all in-flight UI state whenever the active volunteer changes.
+  // Without this, taskStates keyed by incidentId would bleed across
+  // volunteers — Volunteer A's "on-site" phase would appear for Volunteer B.
+  useEffect(() => {
+    setTaskStates({});
+  }, [active?._id]);
+
+  const setTaskPhase = useCallback((incId, phase, msg = '') => {
+    setTaskStates((prev) => ({ ...prev, [incId]: { phase, msg } }));
+  }, []);
+
+  // Step 1: geo-verify arrival — transitions idle → locating → verifying → idle,
+  // then awaits refresh() so checked_in_volunteer_ids comes back from the server
+  // before re-render. isOnSite is derived from that server data, never local state.
+  const handleCheckin = useCallback((inc) => {
+    const incId = inc._id;
+    setTaskPhase(incId, 'locating');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        console.log('[geo-checkin] coordinates acquired:', { latitude, longitude, accuracy: pos.coords.accuracy });
+
+        setTaskPhase(incId, 'verifying');
+
+        const payload = { incidentId: incId, volunteerId: active._id, lat: latitude, lng: longitude };
+        console.log('[geo-checkin] sending payload:', payload);
+
+        try {
+          const result = await geoCheckin(incId, active._id, latitude, longitude);
+          console.log('[geo-checkin] backend response:', result);
+
+          // Await the refresh so checked_in_volunteer_ids is in state before
+          // we clear the spinner — without await the button would flash back to
+          // "Geo-Verified Check-in" for one render cycle.
+          setTaskPhase(incId, 'idle');
+          await refresh();
+          console.log('[geo-checkin] incidents refreshed — isOnSite should now be true for', active.name);
+          showToast(`Geo check-in confirmed — ${Math.round(result.distance_m)}m from site`, 'success', 3000);
+        } catch (err) {
+          console.error('[geo-checkin] backend error:', err.message);
+          setTaskPhase(incId, 'error', err.message || 'Verification failed');
+          showToast(err.message || 'Geo check-in failed', 'error', 5000);
+          setTimeout(() => setTaskPhase(incId, 'idle'), 4500);
+        }
+      },
+      (geoErr) => {
+        console.error('[geo-checkin] geolocation error:', geoErr.code, geoErr.message);
+        const msg = geoErr.code === 1 ? 'Location access denied — please allow location in browser settings'
+                  : geoErr.code === 2 ? 'Location unavailable — check device GPS'
+                  : 'Location request timed out';
+        setTaskPhase(incId, 'error', msg);
+        showToast(msg, 'error', 5000);
+        setTimeout(() => setTaskPhase(incId, 'idle'), 4500);
+      },
+      { enableHighAccuracy: true, timeout: 10_000 }
+    );
+  }, [active, refresh, setTaskPhase]);
+
+  // Step 2: resolve the incident — backend releases all assigned volunteers
+  const handleComplete = useCallback(async (incId) => {
+    console.log('[complete-task] marking complete:', { incidentId: incId, volunteerId: active._id });
+    setTaskPhase(incId, 'completing');
+    try {
+      const result = await completeTask(incId, active._id);
+      console.log('[complete-task] backend response:', result);
+      setTaskPhase(incId, 'done');
+      showToast(`Mission complete — ${result.heroes?.length ?? 0} volunteer(s) credited`, 'success', 4000);
+      setTimeout(() => refresh(), 1800);
+    } catch (err) {
+      console.error('[complete-task] error:', err.message);
+      // Reset to idle — server-derived isOnSite still shows the green button
+      // because the volunteer remains in checked_in_volunteer_ids
+      setTaskPhase(incId, 'error', err.message || 'Could not complete task');
+      showToast(err.message || 'Could not complete task', 'error', 5000);
+      setTimeout(() => setTaskPhase(incId, 'idle'), 4500);
+    }
+  }, [active, refresh, setTaskPhase]);
 
   const handleAssign = useCallback(async (incId) => {
     if (!active) return;
@@ -186,9 +265,9 @@ export default function VolunteerPortal() {
   // ── Mission briefing (volunteer selected) ────────────────────────
   const myAssignments = incidents.filter(
     (inc) =>
-      inc.status === 'assigned' &&
+      (inc.status === 'assigned' || inc.status === 'in_progress') &&
       Array.isArray(inc.assigned_volunteer_ids) &&
-      inc.assigned_volunteer_ids.includes(String(active._id))
+      inc.assigned_volunteer_ids.some((id) => String(id) === String(active._id))
   );
 
   const available = incidents.filter(
@@ -278,7 +357,19 @@ export default function VolunteerPortal() {
           <div className="vol-cards">
             {myAssignments.map((inc) => {
               const band = scoreBand(inc.impact_score);
-              const done = checkedIn.has(inc._id);
+              const ts = taskStates[inc._id] || { phase: 'idle', msg: '' };
+
+              // Derived from server data — scoped to the active volunteer's ID.
+              // This is the only correct way to determine on-site status:
+              // local state is volunteer-agnostic (keyed by incidentId only),
+              // so it would bleed across volunteers sharing the same incident.
+              const isOnSite = Array.isArray(inc.checked_in_volunteer_ids) &&
+                inc.checked_in_volunteer_ids.some((id) => String(id) === String(active._id));
+
+              const checkinBusy = ts.phase === 'locating' || ts.phase === 'verifying';
+              const completing  = ts.phase === 'completing';
+              const done        = ts.phase === 'done';
+
               return (
                 <div key={inc._id} className={`vol-task-card ${band}`}>
                   <div className="vol-task-top">
@@ -302,18 +393,47 @@ export default function VolunteerPortal() {
                       </span>
                     )}
                   </div>
+
+                  {/* ── Step 1: Geo check-in ── */}
                   <button
                     type="button"
-                    className={`vol-checkin-btn ${done ? 'done' : ''}`}
-                    onClick={() => handleCheckin(inc._id)}
-                    disabled={done}
+                    className={`vol-checkin-btn ${
+                      isOnSite || completing || done ? 'on-site'
+                      : ts.phase === 'error'        ? 'error'
+                      : ''
+                    }`}
+                    onClick={() => !checkinBusy && !isOnSite && handleCheckin(inc)}
+                    disabled={checkinBusy || isOnSite || completing || done}
                   >
-                    {done ? (
-                      <><CheckCircle size={16} /> Checked In</>
-                    ) : (
-                      <><MapPin size={16} /> Geo-Verified Check-in</>
-                    )}
+                    {ts.phase === 'locating'         && <><Loader size={16} className="field-spin" /> Getting location…</>}
+                    {ts.phase === 'verifying'        && <><Loader size={16} className="field-spin" /> Verifying on-site…</>}
+                    {ts.phase === 'error'            && <><AlertTriangle size={16} /> {ts.msg}</>}
+                    {(isOnSite || completing || done) && <><CheckCircle size={16} /> On-Site Verified</>}
+                    {!checkinBusy && !isOnSite && ts.phase !== 'error' && <><MapPin size={16} /> Geo-Verified Check-in</>}
                   </button>
+
+                  {/* ── Step 2: Complete — gated on server-confirmed arrival ── */}
+                  {(isOnSite && !done) && (
+                    <button
+                      type="button"
+                      className="vol-complete-btn"
+                      onClick={() => !completing && handleComplete(inc._id)}
+                      disabled={completing}
+                    >
+                      {completing ? (
+                        <><Loader size={16} className="field-spin" /> Completing…</>
+                      ) : (
+                        <><Flag size={16} /> Mark Mission Complete</>
+                      )}
+                    </button>
+                  )}
+
+                  {done && (
+                    <div className="vol-task-resolved">
+                      <CheckCircle size={13} />
+                      Mission resolved — all volunteers freed
+                    </div>
+                  )}
                 </div>
               );
             })}

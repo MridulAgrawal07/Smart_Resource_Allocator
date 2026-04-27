@@ -3,6 +3,19 @@ const Incident = require('../models/Incident');
 const Report = require('../models/Report');
 const { findBestVolunteers } = require('../services/matching.service');
 
+const GEO_VERIFY_RADIUS_M = 200;
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6_371_000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── POST /api/volunteers/seed ────────────────────────────────────
 // Seeds 5 diverse test volunteers around Jaipur (lat ~26.9, lng ~75.7–75.8).
 async function seedVolunteers(req, res, next) {
@@ -293,4 +306,179 @@ async function listVolunteers(req, res, next) {
   }
 }
 
-module.exports = { seedVolunteers, getMatches, confirmAssignment, listVolunteers };
+// ── POST /api/volunteers/checkin ────────────────────────────────
+// Step 1 of 2. Geo-verifies the volunteer is physically on-site, then
+// records their arrival without resolving the incident. Other assigned
+// volunteers are unaffected and can still see and complete the task.
+// Body: { incidentId, volunteerId, lat, lng }
+async function geoCheckin(req, res, next) {
+  try {
+    const { incidentId, volunteerId, lat, lng } = req.body;
+
+    if (!incidentId || !volunteerId || lat == null || lng == null) {
+      return res.status(400).json({ error: 'incidentId, volunteerId, lat, and lng are required' });
+    }
+
+    const [incident, volunteer] = await Promise.all([
+      Incident.findById(incidentId),
+      Volunteer.findById(volunteerId),
+    ]);
+
+    if (!incident) return res.status(404).json({ error: 'Incident not found' });
+    if (!volunteer) return res.status(404).json({ error: 'Volunteer not found' });
+
+    if (!['assigned', 'in_progress'].includes(incident.status)) {
+      return res.status(400).json({ error: 'Incident is not in an active state' });
+    }
+
+    if (!incident.location_centroid?.coordinates?.length) {
+      return res.status(400).json({ error: 'Incident has no location data for geo-verification' });
+    }
+
+    // GeoJSON stores [lng, lat]; volunteer sends { lat, lng }
+    const [incLng, incLat] = incident.location_centroid.coordinates;
+    const distanceM = haversineMeters(lat, lng, incLat, incLng);
+
+    if (distanceM > GEO_VERIFY_RADIUS_M) {
+      return res.status(400).json({
+        error: `Must be on-site to verify. You are ${Math.round(distanceM)}m away (limit: ${GEO_VERIFY_RADIUS_M}m).`,
+        distance_m: Math.round(distanceM),
+        required_m: GEO_VERIFY_RADIUS_M,
+      });
+    }
+
+    // Record arrival — idempotent: skip if already in the array
+    const alreadyCheckedIn = incident.checked_in_volunteer_ids
+      .some((id) => String(id) === String(volunteerId));
+    if (!alreadyCheckedIn) {
+      incident.checked_in_volunteer_ids.push(volunteerId);
+    }
+
+    // Advance incident to in_progress on first arrival
+    if (incident.status === 'assigned') {
+      incident.status = 'in_progress';
+    }
+
+    await incident.save();
+
+    console.log(
+      `[geo-checkin] ${volunteer.name} arrived at incident ${incident._id} — ${Math.round(distanceM)}m from site`
+    );
+
+    return res.json({
+      message: 'Geo check-in confirmed — you are marked on-site',
+      incident_id: incident._id,
+      volunteer_id: volunteer._id,
+      distance_m: Math.round(distanceM),
+      incident_status: incident.status,
+      checked_in_count: incident.checked_in_volunteer_ids.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── POST /api/volunteers/complete-task ──────────────────────────
+// Step 2 of 2. Any on-site volunteer can mark the mission complete.
+// Resolves the incident and releases ALL assigned volunteers, not just
+// the one who pressed the button.
+// Body: { incidentId, volunteerId }
+async function completeTask(req, res, next) {
+  try {
+    const { incidentId, volunteerId } = req.body;
+
+    if (!incidentId || !volunteerId) {
+      return res.status(400).json({ error: 'incidentId and volunteerId are required' });
+    }
+
+    const incident = await Incident.findById(incidentId);
+    if (!incident) return res.status(404).json({ error: 'Incident not found' });
+
+    if (!['assigned', 'in_progress'].includes(incident.status)) {
+      return res.status(400).json({ error: 'Incident is not in a resolvable state' });
+    }
+
+    // Require geo check-in before completion — prevents remote resolution
+    const isOnSite = incident.checked_in_volunteer_ids
+      .some((id) => String(id) === String(volunteerId));
+    if (!isOnSite) {
+      return res.status(403).json({ error: 'Geo check-in required before marking complete' });
+    }
+
+    const now = new Date();
+
+    // Build a fast-lookup Set of who actually arrived on-site
+    const arrivedIds = new Set(
+      incident.checked_in_volunteer_ids.map((id) => String(id))
+    );
+
+    incident.status = 'resolved';
+    incident.resolved_at = now;
+
+    // Assignment history: heroes get 'resolved', latecomers get 'released'
+    for (const entry of incident.assignment_history) {
+      if (!entry.released_at) {
+        entry.released_at = now;
+        entry.status = arrivedIds.has(String(entry.volunteer_id)) ? 'resolved' : 'released';
+      }
+    }
+    await incident.save();
+
+    // Fetch every volunteer who was dispatched to this incident
+    const allAssignedIds = incident.assigned_volunteer_ids;
+    const volunteers = await Volunteer.find({ _id: { $in: allAssignedIds } });
+
+    // Smart cleanup: free everyone, but only credit those who showed up
+    await Promise.all(
+      volunteers.map((vol) => {
+        const isHero = arrivedIds.has(String(vol._id));
+
+        vol.active_assignments = vol.active_assignments.filter(
+          (id) => String(id) !== String(incidentId)
+        );
+        if (vol.active_assignments.length === 0) {
+          vol.current_status = 'available';
+        }
+
+        if (isHero) {
+          vol.total_resolved += 1;
+          if (vol.total_assignments > 0) {
+            vol.completion_rate = vol.total_resolved / vol.total_assignments;
+          }
+        }
+
+        return vol.save();
+      })
+    );
+
+    const heroes    = volunteers.filter((v) => arrivedIds.has(String(v._id)));
+    const latecomers = volunteers.filter((v) => !arrivedIds.has(String(v._id)));
+
+    console.log(
+      `[complete-task] incident ${incident._id} resolved — ` +
+      `heroes: [${heroes.map((v) => v.name).join(', ')}], ` +
+      `released: [${latecomers.map((v) => v.name).join(', ')}]`
+    );
+
+    return res.json({
+      message: 'Mission complete — all assigned volunteers have been freed',
+      incident_id: incident._id,
+      resolved_by: volunteerId,
+      heroes: heroes.map((v) => ({
+        _id: v._id,
+        name: v.name,
+        current_status: v.current_status,
+        total_resolved: v.total_resolved,
+      })),
+      latecomers: latecomers.map((v) => ({
+        _id: v._id,
+        name: v.name,
+        current_status: v.current_status,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { seedVolunteers, getMatches, confirmAssignment, listVolunteers, geoCheckin, completeTask };
