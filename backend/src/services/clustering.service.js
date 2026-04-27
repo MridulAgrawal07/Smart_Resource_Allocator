@@ -87,7 +87,10 @@ async function findCandidateIncidentSemantic({ lat, lng, embedding }) {
   ];
 
   const results = await Incident.aggregate(pipeline);
-  return results[0] || null;
+  if (!results[0]) return null;
+  // aggregate() returns plain objects — re-fetch as a Mongoose document
+  // so mergeReportIntoIncident can call .save() on it.
+  return Incident.findById(results[0]._id);
 }
 
 // ── Category-based candidate pool (spatial + temporal) ────────────
