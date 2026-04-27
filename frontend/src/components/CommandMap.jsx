@@ -318,7 +318,7 @@ function FlyToSelected({ selectedId, markerRefs, visible }) {
   return null;
 }
 
-export default function CommandMap({ incidents, selectedId, onSelect, onAssigned, isMaximized, onToggleMaximize }) {
+export default function CommandMap({ incidents, selectedId, onSelect, onAssigned, isMaximized, onToggleMaximize, isDarkMode }) {
   const markerRefs = useRef(new Map());
 
   const setMarkerRef = useCallback((id, ref) => {
@@ -385,7 +385,9 @@ export default function CommandMap({ incidents, selectedId, onSelect, onAssigned
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            url={isDarkMode
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'}
             subdomains="abcd"
             maxZoom={19}
           />

@@ -6,15 +6,20 @@ import FieldPortal from './pages/FieldPortal.jsx';
 import VolunteerPortal from './pages/VolunteerPortal.jsx';
 import PortalNav from './components/PortalNav.jsx';
 import ToastContainer from './components/Toast.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import './styles.css';
 
 function Layout({ children }) {
   return (
-    <div className="portal-root">
-      <PortalNav />
-      {children}
-      <ToastContainer />
-    </div>
+    <ThemeProvider>
+      <div className="portal-root">
+        <PortalNav />
+        <div className="portal-main">
+          {children}
+          <ToastContainer />
+        </div>
+      </div>
+    </ThemeProvider>
   );
 }
 
