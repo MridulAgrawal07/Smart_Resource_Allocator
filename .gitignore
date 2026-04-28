@@ -1,0 +1,16 @@
+# AI Agent Memory & Configs
+.claude/
+.playwright-mcp/
+claude.md
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Root level environment variables (just in case)
+.env
+.env.*
+!.env.example
+
+# Root level node_modules (if you accidentally run npm install here)
+node_modules/

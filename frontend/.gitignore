@@ -71,3 +71,11 @@ node_modules/
 # Vite Production Build
 dist
 dist-ssr
+
+# AI Agent Files
+.claude/
+.playwright-mcp/
+frontend/.agents/
+frontend/.claude/
+frontend/.kiro/
+claude.md
