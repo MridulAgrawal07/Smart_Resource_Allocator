@@ -1,11 +1,14 @@
+// Strip any accidental trailing slash so template literals never produce //
+const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 export async function fetchIncidents() {
-  const res = await fetch('/api/incidents');
+  const res = await fetch(`${BASE}/api/incidents`);
   if (!res.ok) throw new Error(`fetchIncidents failed: ${res.status}`);
   return res.json();
 }
 
 export async function runAssistantQuery(query) {
-  const res = await fetch('/api/incidents/assistant', {
+  const res = await fetch(`${BASE}/api/incidents/assistant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),
@@ -23,7 +26,7 @@ export async function submitReport({ description, image, lat, lng, worker_id }) 
   if (lat != null) form.append('lat', String(lat));
   if (lng != null) form.append('lng', String(lng));
   if (worker_id) form.append('worker_id', worker_id);
-  const res = await fetch('/api/reports/ingest', { method: 'POST', body: form });
+  const res = await fetch(`${BASE}/api/reports/ingest`, { method: 'POST', body: form });
   if (!res.ok) throw new Error(`submitReport failed: ${res.status}`);
   return res.json();
 }
@@ -31,19 +34,19 @@ export async function submitReport({ description, image, lat, lng, worker_id }) 
 // ── Volunteer Portal ──────────────────────────────────────────────
 
 export async function fetchVolunteers() {
-  const res = await fetch('/api/volunteers');
+  const res = await fetch(`${BASE}/api/volunteers`);
   if (!res.ok) throw new Error(`fetchVolunteers failed: ${res.status}`);
   return res.json();
 }
 
 export async function fetchMatches(incidentId) {
-  const res = await fetch(`/api/incidents/${incidentId}/matches`);
+  const res = await fetch(`${BASE}/api/incidents/${incidentId}/matches`);
   if (!res.ok) throw new Error(`fetchMatches failed: ${res.status}`);
   return res.json();
 }
 
 export async function confirmAssignment(incidentId, volunteerIds) {
-  const res = await fetch(`/api/incidents/${incidentId}/confirm-assignment`, {
+  const res = await fetch(`${BASE}/api/incidents/${incidentId}/confirm-assignment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ volunteerIds }),
@@ -55,13 +58,13 @@ export async function confirmAssignment(incidentId, volunteerIds) {
 // ── Moderation Queue ──────────────────────────────────────────────
 
 export async function fetchPendingReports() {
-  const res = await fetch('/api/reports/pending');
+  const res = await fetch(`${BASE}/api/reports/pending`);
   if (!res.ok) throw new Error(`fetchPendingReports failed: ${res.status}`);
   return res.json();
 }
 
 export async function approveReport(reportId) {
-  const res = await fetch(`/api/reports/${reportId}/approve`, { method: 'POST' });
+  const res = await fetch(`${BASE}/api/reports/${reportId}/approve`, { method: 'POST' });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `approveReport failed: ${res.status}`);
@@ -70,7 +73,7 @@ export async function approveReport(reportId) {
 }
 
 export async function rejectReport(reportId) {
-  const res = await fetch(`/api/reports/${reportId}/reject`, { method: 'POST' });
+  const res = await fetch(`${BASE}/api/reports/${reportId}/reject`, { method: 'POST' });
   if (!res.ok) throw new Error(`rejectReport failed: ${res.status}`);
   return res.json();
 }
@@ -79,7 +82,7 @@ export async function rejectReport(reportId) {
 
 // Step 1: verify on-site arrival (does NOT resolve the incident)
 export async function geoCheckin(incidentId, volunteerId, lat, lng) {
-  const res = await fetch('/api/volunteers/checkin', {
+  const res = await fetch(`${BASE}/api/volunteers/checkin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ incidentId, volunteerId, lat, lng }),
@@ -93,7 +96,7 @@ export async function geoCheckin(incidentId, volunteerId, lat, lng) {
 
 // Step 2: mark mission complete — releases all assigned volunteers
 export async function completeTask(incidentId, volunteerId) {
-  const res = await fetch('/api/volunteers/complete-task', {
+  const res = await fetch(`${BASE}/api/volunteers/complete-task`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ incidentId, volunteerId }),
