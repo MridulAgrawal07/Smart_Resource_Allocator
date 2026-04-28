@@ -124,13 +124,16 @@ function AssignedCard({ inc, active, onSelect }) {
 export default function LiveFeed({ incidents, selectedId, onSelect }) {
   const [tab, setTab] = useState('unassigned');
 
+  const byNewest = (a, b) =>
+    new Date(b.created_at || 0) - new Date(a.created_at || 0);
+
   const unassigned = incidents
     .filter((inc) => inc.status === 'reported' || inc.status === 'triaged')
-    .sort((a, b) => (Number(b.impact_score) || 0) - (Number(a.impact_score) || 0));
+    .sort(byNewest);
 
   const assigned = incidents
     .filter((inc) => inc.status === 'assigned' || inc.status === 'in_progress')
-    .sort((a, b) => (Number(b.impact_score) || 0) - (Number(a.impact_score) || 0));
+    .sort(byNewest);
 
   // Auto-switch tab when the selected incident belongs to the other tab
   useEffect(() => {
@@ -150,7 +153,7 @@ export default function LiveFeed({ incidents, selectedId, onSelect }) {
           </div>
           <div>
             <h2>Live Feed</h2>
-            <div className="subtitle">Sorted by urgency</div>
+            <div className="subtitle">Newest first</div>
           </div>
         </div>
         <span className="count">{unassigned.length + assigned.length} active</span>
