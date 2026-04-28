@@ -293,7 +293,6 @@ smart-resource-allocator/
 │   ├── .firebaserc                   # Firebase project binding
 │   └── package.json
 │
-├── CLAUDE.md                         # Architecture specification (source of truth)
 └── README.md
 ```
 
